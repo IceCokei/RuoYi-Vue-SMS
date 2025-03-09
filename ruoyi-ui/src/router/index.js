@@ -2,12 +2,26 @@ import Vue from 'vue'
 import Router from 'vue-router'
 import store from '../store'
 import { getToken } from '@/utils/auth'
+import NProgress from 'nprogress'
 
 Vue.use(Router)
 
 /* Layout */
 import Layout from '@/layout'
 import ParentView from '@/components/ParentView';
+
+/**
+ * 获取页面标题
+ * @param pageTitle 页面标题
+ * @returns {string}
+ */
+function getPageTitle(pageTitle) {
+  const title = '若依管理系统';
+  if (pageTitle) {
+    return `${pageTitle} - ${title}`;
+  }
+  return title;
+}
 
 /**
  * Note: 路由配置项
@@ -134,43 +148,39 @@ const router = new Router({
 const whiteList = ['/login', '/auth-redirect', '/bind', '/register']
 
 router.beforeEach((to, from, next) => {
-  // 有token说明已登录
-  if (getToken()) {
-    /* 已登录情况 */
-    if (to.path === '/login') {
-      // 如果是访问登录页，直接跳转到首页
-      next({ path: '/' })
+  // 开始进度条
+  NProgress.start();
+  
+  // 获取用户Token
+  const hasToken = getToken();
+
+  // 判断目标是否是登录页
+  if (to.path === '/login') {
+    // 如果已登录，直接跳转到首页
+    if (hasToken) {
+      next({ path: '/' });
+      NProgress.done();
     } else {
-      // 判断当前用户是否已拉取完用户信息
-      if (store.getters.roles.length === 0) {
-        // 拉取用户信息
-        store.dispatch('GetInfo').then(() => {
-          // 动态路由，拉取菜单
-          store.dispatch('GenerateRoutes').then(accessRoutes => {
-            // 根据roles权限生成可访问的路由表
-            router.addRoutes(accessRoutes) // 动态添加可访问路由表
-            next({ ...to, replace: true }) // hack方法 确保addRoutes已完成
-          })
-        }).catch(err => {
-          console.log(err)
-          store.dispatch('LogOut').then(() => {
-            next({ path: '/' })
-          })
-        })
-      } else {
-        next()
-      }
+      // 未登录，允许访问登录页
+      next();
     }
   } else {
-    // 没有token
-    if (whiteList.indexOf(to.path) !== -1) {
-      // 在免登录白名单，直接进入
-      next()
+    // 非登录页面的访问逻辑
+    if (hasToken) {
+      // 添加调试日志
+      console.log('已登录，跳转路径:', to.path);
+      next();
     } else {
-      // 否则全部重定向到登录页
-      next(`/login?redirect=${to.fullPath}`)
+      // 未登录，重定向到登录页
+      next(`/login?redirect=${encodeURIComponent(to.fullPath)}`);
+      NProgress.done();
     }
   }
+})
+
+router.afterEach(() => {
+  // 结束进度条
+  NProgress.done();
 })
 
 export default router

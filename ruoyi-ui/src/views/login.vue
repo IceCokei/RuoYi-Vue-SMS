@@ -260,7 +260,17 @@ export default {
 
           // 使用Vuex action处理登录
           this.$store.dispatch("Login", this.loginForm).then(() => {
-            this.$router.push({ path: this.redirect || "/" }).catch(() => { });
+            let redirect = this.redirect;
+            if (!redirect || redirect === "/login") {
+              redirect = "/index";
+            }
+            
+            this.$router.replace({ path: redirect }).catch(err => {
+              console.error("路由跳转失败:", err);
+              if (err.name !== 'NavigationDuplicated') {
+                window.location.href = process.env.VUE_APP_BASE_URL + redirect;
+              }
+            });
           }).catch(() => {
             this.loading = false;
             this.getCode();
@@ -303,9 +313,19 @@ export default {
             setToken(res.token);
             this.$store.commit('SET_TOKEN', res.token);
 
-            // 进行页面跳转
-            this.$router.push({ path: this.redirect || "/" }).catch(err => {
+            // 修改这部分代码，使用replace而不是push
+            let redirect = this.redirect;
+            if (!redirect || redirect === "/login") {
+              redirect = "/index";
+            }
+            
+            // 使用replace防止导航历史堆栈问题
+            this.$router.replace({ path: redirect }).catch(err => {
               console.error("路由跳转失败:", err);
+              // 如果路由跳转失败，使用window.location作为备选方案
+              if (err.name !== 'NavigationDuplicated') {
+                window.location.href = process.env.VUE_APP_BASE_URL + redirect;
+              }
             });
 
             this.loading = false;
