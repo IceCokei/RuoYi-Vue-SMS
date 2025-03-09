@@ -12,8 +12,7 @@ import com.ruoyi.common.utils.StringUtils;
  * @author ruoyi
  */
 @RestController
-public class SysIndexController
-{
+public class SysIndexController {
     /** 系统基础配置 */
     @Autowired
     private RuoYiConfig ruoyiConfig;
@@ -22,8 +21,8 @@ public class SysIndexController
      * 访问首页，提示语
      */
     @RequestMapping("/")
-    public String index()
-    {
-        return StringUtils.format("欢迎使用{}后台管理框架，当前版本：v{}，请通过前端地址访问。", ruoyiConfig.getName(), ruoyiConfig.getVersion());
+    public String index() {
+        return StringUtils.format("欢迎使用{}后台管理框架，当前版本：v{}，请通过前端地址访问。支持账号密码和短信验证码两种登录方式。",
+                ruoyiConfig.getName(), ruoyiConfig.getVersion());
     }
 }

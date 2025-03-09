@@ -61,6 +61,7 @@ public class SysSmsServiceImpl implements ISysSmsService {
     public String sendSmsCode(String mobile) {
         // 生成6位随机验证码
         String code = generateSmsCode(6);
+        System.out.println("生成的验证码: " + code + " 用于手机号: " + mobile);
 
         try {
             // 格式化短信内容
@@ -132,13 +133,21 @@ public class SysSmsServiceImpl implements ISysSmsService {
      * 将验证码存入Redis
      */
     private String storeVerificationCodeInRedis(String mobile, String code) {
-        // 生成唯一标识
+        // Generate unique identifier
         String uuid = generateUuid();
-        String verifyKey = Constants.SMS_CODE_KEY + uuid;
 
-        // 将手机号和验证码存入Redis
-        redisCache.setCacheObject(verifyKey, code, Constants.SMS_EXPIRATION, TimeUnit.MINUTES);
+        // Store code directly with mobile as part of the key for easy retrieval
+        String mobileKey = Constants.SMS_CODE_KEY + mobile;
+        redisCache.setCacheObject(mobileKey, code, Constants.SMS_EXPIRATION, TimeUnit.MINUTES);
+
+        // Also store with UUID for verification during login
+        String uuidKey = Constants.SMS_CODE_KEY + uuid;
+        redisCache.setCacheObject(uuidKey, code, Constants.SMS_EXPIRATION, TimeUnit.MINUTES);
+
+        // Store mobile->uuid mapping
         redisCache.setCacheObject(Constants.SMS_MOBILE_KEY + uuid, mobile, Constants.SMS_EXPIRATION, TimeUnit.MINUTES);
+
+        System.out.println("已存储验证码到Redis - 手机号键: " + mobileKey + ", UUID键: " + uuidKey + ", 验证码: " + code);
 
         return uuid;
     }

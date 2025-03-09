@@ -13,6 +13,8 @@ import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.framework.web.service.TokenService;
 import com.ruoyi.system.service.ISysUserService;
 import com.ruoyi.framework.web.service.SysLoginService;
+import com.ruoyi.common.constant.CacheConstants;
+import com.ruoyi.common.core.redis.RedisCache;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -29,10 +31,16 @@ public class SmsLoginController {
     @Autowired
     private SysLoginService loginService;
 
+    @Autowired
+    private RedisCache redisCache;
+
     @PostMapping("/sms/simple-login")
     public AjaxResult smsLogin(@RequestBody Map<String, String> loginBody) {
         String mobile = loginBody.get("mobile");
         String code = loginBody.get("smsCode");
+
+        // Debug logs
+        System.out.println("登录请求 - 手机号: " + mobile + ", 验证码: " + code);
 
         // 基本验证
         if (StringUtils.isEmpty(mobile) || StringUtils.isEmpty(code)) {
@@ -40,7 +48,35 @@ public class SmsLoginController {
         }
 
         // 验证短信验证码逻辑
-        // 这里省略验证码验证，实际项目应该增加验证逻辑
+        String verifyKey = CacheConstants.SMS_CODE_KEY + mobile;
+        System.out.println("Redis键: " + verifyKey);
+
+        String captcha = redisCache.getCacheObject(verifyKey);
+        System.out.println("Redis中的验证码: " + captcha);
+
+        if (captcha == null) {
+            // 尝试使用不同的Redis key格式查找
+            String alternateKey = "sms_code:" + mobile;
+            captcha = redisCache.getCacheObject(alternateKey);
+            System.out.println("尝试替代Redis键: " + alternateKey + ", 结果: " + captcha);
+
+            if (captcha == null) {
+                return AjaxResult.error("验证码已过期或不存在");
+            }
+
+            // 如果找到了，更新verifyKey
+            verifyKey = alternateKey;
+        }
+
+        // 验证码匹配检查
+        System.out.println("验证码比较: 输入=" + code + ", 存储=" + captcha);
+        if (!code.equals(captcha)) {
+            return AjaxResult.error("验证码错误");
+        }
+
+        // 验证通过后删除验证码
+        redisCache.deleteObject(verifyKey);
+        System.out.println("验证成功，已删除Redis验证码");
 
         // 尝试加载用户
         LoginUser loginUser = loginService.loadUserByMobile(mobile);
