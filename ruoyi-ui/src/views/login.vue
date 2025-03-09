@@ -283,7 +283,7 @@ export default {
       }
 
       this.loading = true;
-      console.log("开始简化版短信登录...");
+      console.log("开始短信登录验证...");
 
       // 记住手机号
       if (this.smsLoginForm.rememberMe) {
@@ -317,7 +317,16 @@ export default {
         })
         .catch(error => {
           console.error("登录失败:", error);
-          this.$message.error("登录失败，请稍后重试");
+          let errorMessage = "登录失败，请稍后重试";
+
+          // Try to extract useful error message
+          if (error.response && error.response.data) {
+            errorMessage = error.response.data.msg || errorMessage;
+          } else if (typeof error === 'string') {
+            errorMessage = error;
+          }
+
+          this.$message.error(errorMessage);
           this.loading = false;
         });
     }
